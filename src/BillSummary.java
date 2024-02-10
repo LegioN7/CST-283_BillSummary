@@ -20,8 +20,10 @@ public class BillSummary {
     final static double SUMMER_RATE_OVER = 0.293;
     final static int WINTER_OVER_RATE = 800;
     final static int SUMMER_OVER_RATE = 700;
+    final static int MAX_RECORDS = 100;
 
     public static void main(String[] args) {
+        Energy[] energyRecords = readEnergyData();
 
         // Display a Menu for the user to choose from
         choiceMenu();
@@ -29,9 +31,52 @@ public class BillSummary {
 
     }
 
+    // Method to read the energy data from the file
+    public static Energy[] readEnergyData() {
+        Energy[] energyRecords = new Energy[MAX_RECORDS];
+        int count = 0;
+
+        try {
+            File dataFileRef = new File(FILENAME);
+
+            // Check for file existence.  If not found, display error and exit
+            if (!dataFileRef.exists()) {
+                System.out.println("File not found");
+                System.exit(0);
+            }
+
+            Scanner inputFile = new Scanner(dataFileRef);
+
+            // File processing loop
+            while (inputFile.hasNext()) {
+                String line = inputFile.nextLine();
+                String[] parts = line.split(",");
+
+                if (parts.length == 3) {
+                    int month = Integer.parseInt(parts[0]);
+                    int year = Integer.parseInt(parts[1]);
+                    int energy = Integer.parseInt(parts[2]);
+                    energyRecords[count] = new Energy(month, year, energy);
+                    count++;
+                } else {
+                    System.out.println("Invalid Data Format: " + line);
+                }
+            }
+            inputFile.close();
+
+            // Error Catching
+            // Exits if there is an issue with the file.
+        } catch (IOException e) {
+            System.out.println("File error");
+            System.exit(0);
+        }
+
+        return energyRecords;
+    }
+
     private static void choiceMenu() {
 
-        while (true) {
+        do {
             // Create a menu
             System.out.println("Energy Bill Summary");
             System.out.println("1. Display Energy.txt Data");
@@ -47,65 +92,39 @@ public class BillSummary {
             switch (choice) {
                 case 1:
                     System.out.println("Display Energy.txt Data");
-                    dataExtract();
+                    displayEnergyData(readEnergyData());
                     break;
                 case 2:
                     System.out.println("Calculate Energy Cost per Month");
-                    calculateAverageCost();
+                    calculateAverageCost(readEnergyData());
                     break;
                 case 3:
-                    exitProgram();
+                    System.out.println("Exiting Program");
+                    System.exit(0);
                     break;
                 default:
                     System.out.println("Invalid choice. Please select 1, 2, or 3.");
                     break;
             }
-        }
+        } while (true);
     }
 
-
-    private static void exitProgram() {
-        System.out.println("Exiting Program");
-        System.exit(0);
-    }
 
     // This is a method to extract the data from the file
     // I've aligned the text for the data, so I know the data is extracting correctly, and can be displayed to the user
     // I've created a menu to display the data so the user can confirm that the data is correct.
-    private static void dataExtract() {
-        try {
-            File dataFileRef = new File(FILENAME);
+    private static void displayEnergyData(Energy[] energyRecords) {
+        if (energyRecords.length == 0) {
+            System.out.println("No data found");
+            return;
+        }
 
-            // Check for file existence.  If not found, display error and exit
-            if (!dataFileRef.exists()) {
-                System.out.println("File not found");
-                System.exit(0);
+
+        System.out.println("Year  Month  Energy");
+        for (Energy energyRecord : energyRecords) {
+            if (energyRecord != null) {
+                System.out.printf("%-6d %-5d %-12d\n", energyRecord.getYear(), energyRecord.getMonth(), energyRecord.getEnergy());
             }
-
-            Scanner inputFile = new Scanner(dataFileRef);
-
-            System.out.println("Year  Month  Energy Used");
-            // File processing loop.
-
-            while (inputFile.hasNext()) {
-                String line = inputFile.nextLine();
-                String[] parts = line.split(",");
-
-                if (parts.length == 3) {
-                    int month = Integer.parseInt(parts[0]);
-                    int year = Integer.parseInt(parts[1]);
-                    int energy = Integer.parseInt(parts[2]);
-                    System.out.printf("%-4d  %-5d  %-12d\n", year, month, energy);
-                } else {
-                    System.out.println("Invalid Data Format: " + line);
-                }
-            }
-            inputFile.close();
-            // If file error, display message and crash
-        } catch (IOException e)
-        {
-            System.out.println("File error");
-            System.exit(0);
         }
     }
 
@@ -129,64 +148,40 @@ public class BillSummary {
         return Double.parseDouble(String.format("%.2f", bill));
     }
 
-    public static void calculateAverageCost() {
-        // Array to store total cost for each month
+    public static void calculateAverageCost(Energy[] energyRecords) {
+        if (energyRecords.length == 0) {
+            System.out.println("No data found");
+            return;
+        }
+
+        // Arrays to store the total cost per month
         double[] totalCostPerMonth = new double[12];
-        // Array to store count of months
         int[] countPerMonth = new int[12];
 
-        try {
-            File dataFileRef = new File(FILENAME);
+        for (Energy energyRecord : energyRecords) {
+            if (energyRecord != null) {
 
-            // Check for file existence.  If not found, display error and exit
-            if (!dataFileRef.exists()) {
-                System.out.println("File not found");
-                System.exit(0);
+                int month = energyRecord.getMonth() - 1;
+                int energy = energyRecord.getEnergy();
+                double cost = calcElecBill(month + 1, energy);
+
+
+                totalCostPerMonth[month] += cost;
+                countPerMonth[month]++;
             }
-
-            Scanner inputFile = new Scanner(dataFileRef);
-
-            // File processing loop
-            while (inputFile.hasNext()) {
-                String line = inputFile.nextLine();
-                String[] parts = line.split(",");
-
-                if (parts.length == 3) {
-                    int month = Integer.parseInt(parts[0]);
-                    // Because we are not using year, we do not loop through the year and store the year data
-                    int energy = Integer.parseInt(parts[2]);
-
-                    double cost = calcElecBill(month, energy);
-                    totalCostPerMonth[month - 1] += cost;
-                    countPerMonth[month - 1]++;
-                } else {
-                    System.out.println("Invalid Data Format: " + line);
-                }
-            }
-            inputFile.close();
-
-            // Calculate and display average cost for each month
-            // Loop through the months and then calculate the average cost
-            for (int i = 0; i < 12; i++) {
-                if (countPerMonth[i] > 0) {
-                    double averageCost = totalCostPerMonth[i] / countPerMonth[i];
-                    // Print a statement that explains the electric cost for each month
-                    // Format the output to 2 decimal places
-                    // Print the average cost for each month
-                    // Print a statement if there is no data found for the month
-                    System.out.printf("Average Electric Cost for Month %d: $%.2f\n", i + 1, averageCost);
-                } else {
-                    System.out.printf("No data found for Month %d\n", i + 1);
-                }
-            }
-
-            // Error Catching
-            // Exits if there is an issue with the file.
-        } catch (IOException e) {
-            System.out.println("File error");
-            System.exit(0);
         }
+
+        // Display the total cost per month
+        System.out.println("Month  Total Cost  Average Cost");
+        for (int month = 0; month < 12; month++) {
+            if (countPerMonth[month] > 0) {
+                double averageCost = totalCostPerMonth[month] / countPerMonth[month];
+                System.out.printf("%-6d %-11.2f %-12.2f\n", month + 1, totalCostPerMonth[month], averageCost);
+            }
+        }
+
+
     }
-    }
+}
 
 
